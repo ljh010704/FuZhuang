@@ -95,7 +95,7 @@ async function main() {
           if (!orderIdMatch) continue;
           
           const orderId = orderIdMatch[1];
-          const amountMatch = sec.match(/([\d.]+)\uff08\u5171\d+\u4ef6\u5541c\u54c1/);
+          const amountMatch = sec.match(/([\d.]+)\uff08\u5171\d+\u4ef6\u5546\u54c1/);
           const amount = amountMatch ? amountMatch[1] : null;
           
           const lines = sec.split('\n').filter(l => l.trim());

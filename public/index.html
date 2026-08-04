@@ -283,9 +283,9 @@ updateSelCount();renderTable();
 }
 
 function toggleSelectAll(){
-var checked=document.getElementById("chkAll").checked;
-if(checked){filteredData.forEach(function(o){selectedIds.add(o.platformOrderId);});}
-else{selectedIds.clear();}
+var allSelected=filteredData.length>0&&filteredData.every(function(o){return selectedIds.has(o.platformOrderId);});
+if(allSelected){selectedIds.clear();}
+else{filteredData.forEach(function(o){selectedIds.add(o.platformOrderId);});}
 updateSelCount();renderTable();
 }
 
@@ -339,10 +339,11 @@ document.addEventListener("click",function(e){
   if(e.target.classList.contains("flag-dot"))return;
   picker.classList.remove("show");
 });
-document.querySelectorAll(".flag-picker .fp-color").forEach(function(c){
-  c.onclick=function(){
-    selectFlagColor(parseInt(this.dataset.f));
-  };
+document.addEventListener("click",function(e){
+  var t=e.target;
+  if(t.classList&&t.classList.contains("fp-color")){
+    selectFlagColor(parseInt(t.dataset.f));
+  }
 });
 function setFlagSingle(oid,type,nf){
 var o=RAW_DATA.find(function(x){return x.platformOrderId===oid;});
@@ -435,7 +436,8 @@ document.getElementById("th2").onclick=function(){sortTable(2);};
 document.getElementById("th3").onclick=function(){sortTable(3);};
 document.getElementById("th4").onclick=function(){sortTable(4);};
 document.querySelectorAll(".qd").forEach(function(b){b.onclick=function(){setQuickRange(b.dataset.range);};});
-document.getElementById("groupFilter").onchange=function(){initStores(this.value);};
+document.getElementById("groupFilter").onchange=function(){initStores(this.value);applyFilters();};
+document.getElementById("storeFilter").onchange=function(){applyFilters();};
 
 // Init
 filteredData=[...RAW_DATA];

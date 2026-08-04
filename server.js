@@ -30,7 +30,7 @@ async function extractOrdersFromStatus(page, statusName) {
       const orderIdMatch = sec.match(/^\s*(\d{19})/);
       if (!orderIdMatch) continue;
       const orderId = orderIdMatch[1];
-      const amountMatch = sec.match(/([\d.]+)\uff08\u5171\d+\u4ef6\u5541c\u54c1/);
+      const amountMatch = sec.match(/([\d.]+)\uff08\u5171\d+\u4ef6\u5546\u54c1/);
       const amount = amountMatch ? amountMatch[1] : null;
       const lines = sec.split('\n').filter(l => l.trim());
       const storeName = lines.length > 1 ? lines[0].trim() : null;
