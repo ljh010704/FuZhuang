@@ -1,0 +1,148 @@
+﻿const express = require('express');
+const { chromium } = require('playwright');
+const cron = require('node-cron');
+const fs = require('fs');
+const path = require('path');
+const config = require('./config.js');
+
+const app = express();
+const PORT = config.PORT;
+const DATA_FILE = path.join(__dirname, config.DATA_FILE);
+
+if (!fs.existsSync(path.dirname(DATA_FILE))) {
+  fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
+}
+
+async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function extractOrdersFromStatus(page, statusName) {
+  const orders = [];
+  try {
+    const tab = await page.locator('text=' + statusName).first();
+    await tab.click({ timeout: 10000 });
+    await sleep(3000);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await sleep(1000);
+    const text = await page.evaluate(() => document.body.innerText);
+    const sections = text.split(/\u5e73\u53f0\u8ba2\u5355\u53f7\uff1a/);
+    for (let i = 1; i < sections.length; i++) {
+      const sec = sections[i];
+      const orderIdMatch = sec.match(/^\s*(\d{19})/);
+      if (!orderIdMatch) continue;
+      const orderId = orderIdMatch[1];
+      const amountMatch = sec.match(/([\d.]+)\uff08\u5171\d+\u4ef6\u5541c\u54c1/);
+      const amount = amountMatch ? amountMatch[1] : null;
+      const lines = sec.split('\n').filter(l => l.trim());
+      const storeName = lines.length > 1 ? lines[0].trim() : null;
+      const buyerMatch = sec.match(/\u4e70\u5bb6\u7559\u8a00:\s*(.*?)(?=\n)/);
+      const sellerMatch = sec.match(/\u5356\u5bb6\u5907\u6ce8:\s*(.*?)(?=\n)/);
+      const systemMatch = sec.match(/\u7cfb\u7edf\u5907\u6ce8:\s*(.*?)(?=\n)/);
+      const shipMatch = sec.match(/\u63a8\u9001\u65f6\u95f4\uff1a([\d\-:\s]+)/);
+      orders.push({
+        platformOrderId: orderId, amount, storeName,
+        buyerNote: buyerMatch ? buyerMatch[1].trim() : '',
+        sellerNote: sellerMatch ? sellerMatch[1].trim() : '',
+        systemNote: systemMatch ? systemMatch[1].trim() : '',
+        shipTime: shipMatch ? shipMatch[1].trim().substring(0, 19) : null,
+        status: statusName, platform: '\u6296\u97f3',
+        sellerFlag: 0, systemFlag: 0,
+        sellerFlagColor: 'rgb(170, 170, 170)', systemFlagColor: 'rgb(170, 170, 170)'
+      });
+    }
+  } catch(e) { console.log('  Error: ' + e.message); }
+  return orders;
+}
+
+let isUpdating = false;
+async function updateData() {
+  if (isUpdating) { console.log('Already updating...'); return; }
+  isUpdating = true;
+  console.log('[' + new Date().toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'}) + '] Starting update...');
+  try {
+    const browser = await chromium.launch(config.HEADLESS ? {
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
+    } : {
+      headless: false,
+      args: ['--disable-blink-features=AutomationControlled']
+    });
+    const context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      viewport: { width: 1280, height: 800 }
+    });
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    });
+    const page = await context.newPage();
+    console.log('Logging in...');
+    await page.goto(config.ERP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await sleep(3000);
+    const inputs = await page.$$('input');
+    if (inputs.length >= 2) { await inputs[0].fill(config.USERNAME); await inputs[1].fill(config.PASSWORD); }
+    await page.keyboard.press('Enter');
+    await sleep(5000);
+    await page.goto(config.ERP_URL + 'order/check', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await sleep(3000);
+    try {
+      await page.locator('text=\u6296\u97f3').first().click({ timeout: 10000 });
+      await sleep(2000);
+    } catch(e) {
+      await page.evaluate(() => {
+        for (const el of document.querySelectorAll('div,span,a')) {
+          if (el.innerText === '\u6296\u97f3' && el.offsetParent) { el.click(); return; }
+        }
+      });
+      await sleep(2000);
+    }
+    const tabs = ['\u5df2\u53d1\u8d27', '\u5df2\u63a8\u9001\u5f85\u53d1\u8d27', '\u5df2\u53d1\u8d27\u9000\u6b3e', '\u4ea4\u6613\u5173\u95ed'];
+    let all = [];
+    for (const t of tabs) {
+      console.log('Extracting: ' + t);
+      const o = await extractOrdersFromStatus(page, t);
+      console.log('  Found: ' + o.length);
+      all = all.concat(o);
+    }
+    const seen = {};
+    const deduped = all.filter(o => { if (seen[o.platformOrderId]) return false; seen[o.platformOrderId] = true; return true; });
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ lastUpdate: new Date().toISOString(), totalOrders: deduped.length, orders: deduped }, null, 2), 'utf8');
+    console.log('Done! Total: ' + deduped.length);
+    await browser.close();
+  } catch(err) {
+    console.error('Failed: ' + err.message);
+  } finally {
+    isUpdating = false;
+  }
+}
+
+app.get('/api/orders', (req, res) => {
+  try {
+    if (fs.existsSync(DATA_FILE)) res.json(JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')));
+    else res.json({ lastUpdate: null, totalOrders: 0, orders: [] });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/update', (req, res) => { res.json({ message: 'started' }); updateData(); });
+
+app.get('/api/groups', (req, res) => {
+  res.json({
+    "HKML\u9c7c\u4e4e": ["HKML\u9c7c\u4e4e\u5973\u88c5\u4e13\u5356\u5e97"],
+    "\u4e0a\u548c\u9686": ["\u4e0a\u548c\u9686\u5851\u670d\u9970\u4e13\u5356\u5e97", "\u4e0a\u548c\u9686\u5851\u7814\u670d\u9970\u4e13\u5356\u5e97", "\u4e0a\u548c\u9686\u7814\u670d\u9970\u4e13\u5356\u5e97"],
+    "\u5409\u516c\u5802": ["\u5409\u516c\u5802\u867d\u91cc\u670d\u88c5\u4e13\u5356\u5e97", "\u5409\u516c\u5802\u8d38\u6613\u670d\u9970\u4e13\u5356\u5e97", "\u5409\u516c\u5802\u91cc\u8d38\u670d\u88c5\u4e13\u5356\u5e97", "\u5409\u516c\u5802\u91cc\u8d38\u670d\u9970\u4e13\u5356\u5e97"],
+    "\u6c38\u6625\u5851\u7814": ["\u6c38\u6625\u53bf\u5851\u7814\u8d38\u6613\u5546\u884c\uff08\u4e2a\u4eba\u72ec\u8d44\uff09805\u4f01\u4e1a\u5e97", "\u6c38\u6625\u53bf\u5851\u7814\u8d38\u6613\u5546\u884c\uff08\u4e2a\u4eba\u72ec\u8d44\uff09\u4f01\u4e1a\u5e97"],
+    "\u743c\u6d77\u72b9\u5b9a": ["\u743c\u6d77\u72b9\u5b9a\u5546\u8d27\u884c\uff08\u4e2a\u4eba\u72ec\u8d44\uff09\u4f01\u4e1a\u5e97"],
+    "\u957f\u6c99\u9c7c\u4e4e": ["\u957f\u6c99\u96e8\u82b1\u533a\u9c7c\u4e4e\u9752\u767e\u8d27\u5546\u884c\uff08\u4e2a\u4eba\u72ec\u8d44\uff09\u4f01\u4e1a\u5e97"]
+  });
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+app.listen(PORT, () => {
+  console.log('Server: http://localhost:' + PORT);
+  console.log('API: http://localhost:' + PORT + '/api/orders');
+  console.log('Update: http://localhost:' + PORT + '/api/update');
+});
+
+cron.schedule('*/' + config.UPDATE_INTERVAL + ' * * * *', () => updateData());
+setTimeout(() => updateData(), 10000);
+console.log('Ready. HEADLESS=' + config.HEADLESS);
