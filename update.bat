@@ -16,6 +16,10 @@ cd /d "%~dp0"
 node extract_data.js
 
 echo.
+echo 正在将数据嵌入看板...
+node embed_data.js
+
+echo.
 echo ========================================
 echo 更新完成！按任意键退出...
 pause >nul

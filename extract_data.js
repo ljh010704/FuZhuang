@@ -1,6 +1,7 @@
 ﻿const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
+const { mergeOrders } = require('./merge_archive.js');
 
 const OUTPUT_DIR = __dirname;
 
@@ -15,7 +16,10 @@ async function main() {
     headless: false,
     args: ['--start-maximized']
   });
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const SESSION_FILE = path.join(OUTPUT_DIR, '_erp_session.json');
+  const ctxOpts = { viewport: { width: 1280, height: 800 } };
+  if (fs.existsSync(SESSION_FILE)) ctxOpts.storageState = SESSION_FILE;
+  const context = await browser.newContext(ctxOpts);
   const page = await context.newPage();
   
   try {
@@ -39,6 +43,8 @@ async function main() {
       }
     }
     
+    try { await context.storageState({ path: SESSION_FILE }); console.log('会话已保存(_erp_session.json)'); } catch(e) {}
+
     // Navigate to order page
     console.log('\u8fdb\u5165\u8ba2\u5355\u9875\u9762...');
     await page.goto('https://fx.fengsutb.com/order/check', { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -65,6 +71,7 @@ async function main() {
     }
     
     const allOrders = [];
+    const failedTabs = [];
     
     const statusTabs = [
       '\u5df2\u53d1\u8d27',
@@ -76,9 +83,21 @@ async function main() {
     for (const tabName of statusTabs) {
       console.log('\u63d0\u53d6: ' + tabName);
       try {
-        // Click status tab
-        const tab = await page.locator('text=' + tabName).first();
-        await tab.click({ timeout: 8000 });
+        // Click status tab（等待渲染后精确点击 tab，避免点到隐藏的"已发货明细"菜单项）
+        let clicked = false;
+        for (let ti = 0; ti < 10 && !clicked; ti++) {
+          clicked = await page.evaluate(function(name) {
+            const els = Array.prototype.slice.call(document.querySelectorAll('.arco-tabs-tab, .arco-tabs-tab-title, .tab-text-box'));
+            const el = els.find(function(e) {
+              const r = e.getBoundingClientRect();
+              return r.width > 0 && r.height > 0 && (e.textContent || '').trim() === name;
+            });
+            if (el) { el.click(); return true; }
+            return false;
+          }, tabName);
+          if (!clicked) await sleep(1000);
+        }
+        if (!clicked) throw new Error('tab not found: ' + tabName);
         await sleep(3000);
         
         // Scroll down to load more
@@ -87,6 +106,43 @@ async function main() {
         
         // Extract from page text
         const text = await page.evaluate(() => document.body.innerText);
+        const productMap = await page.evaluate(() => {
+          const map = {};
+          document.querySelectorAll('.shop-body').forEach(function(card) {
+            const m = (card.innerText || '').match(/平台订单号：\s*(\d{19})/);
+            if (!m) return;
+            const products = [];
+            card.querySelectorAll('img').forEach(function(im) {
+              const src = im.src || '';
+              if (src.indexOf('ecombdimg') === -1) return;
+              const block = im.closest('[three-index]') || im.parentElement;
+              let title = '';
+              block.querySelectorAll('span').forEach(function(sp) {
+                if (title) return;
+                const a = sp.querySelector('a');
+                if (a && a.textContent.indexOf('编辑简称') !== -1) title = sp.textContent.replace(a.textContent, '').trim();
+              });
+              if (!title) {
+                let best = '';
+                block.querySelectorAll('span').forEach(function(sp) {
+                  const t = (sp.textContent || '').trim();
+                  if (t.length > best.length && t.indexOf('商品ID') === -1 && t.indexOf('商家编码') === -1 && t.indexOf('规格') === -1) best = t;
+                });
+                title = best.replace(/编辑(SKU)?简称/g, '').trim();
+              }
+              let spec = '';
+              block.querySelectorAll('div').forEach(function(d) {
+                if (spec) return;
+                const t = (d.textContent || '').trim();
+                if (t.indexOf('规格名称') === 0) spec = t.replace(/^规格名称：?\s*/, '');
+              });
+              products.push({ img: src, title: title, spec: spec });
+            });
+            map[m[1]] = products;
+          });
+          return map;
+        });
+
         const sections = text.split(/\u5e73\u53f0\u8ba2\u5355\u53f7\uff1a/);
         
         for (let i = 1; i < sections.length; i++) {
@@ -114,6 +170,7 @@ async function main() {
             sellerNote: sellerMatch ? sellerMatch[1].trim() : '',
             systemNote: systemMatch ? systemMatch[1].trim() : '',
             shipTime: shipMatch ? shipMatch[1].trim().substring(0, 19) : null,
+            products: productMap[orderId] || [],
             status: tabName,
             platform: '\u6296\u97f3',
             sellerFlag: 0,
@@ -126,6 +183,7 @@ async function main() {
         console.log('  \u627e\u5230 ' + (sections.length - 1) + ' \u6761\u8ba2\u5355');
       } catch(e) {
         console.log('  \u9519\u8bef: ' + e.message);
+        failedTabs.push(tabName);
       }
     }
     
@@ -141,8 +199,25 @@ async function main() {
     
     console.log('\u53bb\u91cd\u540e: ' + deduped.length + ' \u6761\u8ba2\u5355');
     
+    // Merge with archive: keep orders that disappeared from ERP (e.g. buyer cancelled before shipping)
+    const ARCHIVE_FILE = path.join(OUTPUT_DIR, 'orders_archive.json');
+    let archive = [];
+    if (fs.existsSync(ARCHIVE_FILE)) {
+      try { archive = JSON.parse(fs.readFileSync(ARCHIVE_FILE, 'utf8')); } catch(e) { archive = []; }
+    } else {
+      try {
+        const curHtml = fs.readFileSync(path.join(OUTPUT_DIR, 'public', 'index.html'), 'utf8');
+        const dm = curHtml.match(/const RAW_DATA = (\[.*\]);/);
+        if (dm) archive = JSON.parse(dm[1]);
+      } catch(e) { archive = []; }
+    }
+    const scrapeOk = deduped.length >= 10 && failedTabs.indexOf('\u5df2\u63a8\u9001\u5f85\u53d1\u8d27') === -1;
+    const merged = mergeOrders(archive, deduped, { allowCancel: scrapeOk });
+    fs.writeFileSync(ARCHIVE_FILE, JSON.stringify(merged.orders, null, 2), 'utf8');
+    console.log('\u5408\u5e76\u5f52\u6863: \u65b0\u589e ' + merged.added + ', \u66f4\u65b0 ' + merged.updated + ', \u6807\u8bb0\u5df2\u53d6\u6d88 ' + merged.cancelled);
+
     // Write data file
-    const dataJs = 'const RAW_DATA = ' + JSON.stringify(deduped) + ';\n';
+    const dataJs = 'const RAW_DATA = ' + JSON.stringify(merged.orders) + ';\n';
     fs.writeFileSync(path.join(OUTPUT_DIR, 'dashboard_data.js'), dataJs, 'utf8');
     
     console.log('\u6570\u636e\u5df2\u4fdd\u5b58\u5230 dashboard_data.js');

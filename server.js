@@ -4,6 +4,7 @@ const cron = require('node-cron');
 const fs = require('fs');
 const path = require('path');
 const config = require('./config.js');
+const { mergeOrders } = require('./merge_archive.js');
 
 const app = express();
 const PORT = config.PORT;
@@ -18,12 +19,61 @@ async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 async function extractOrdersFromStatus(page, statusName) {
   const orders = [];
   try {
-    const tab = await page.locator('text=' + statusName).first();
-    await tab.click({ timeout: 10000 });
+    let clicked = false;
+    for (let ti = 0; ti < 10 && !clicked; ti++) {
+      clicked = await page.evaluate(function(name) {
+        const els = Array.prototype.slice.call(document.querySelectorAll('.arco-tabs-tab, .arco-tabs-tab-title, .tab-text-box'));
+        const el = els.find(function(e) {
+          const r = e.getBoundingClientRect();
+          return r.width > 0 && r.height > 0 && (e.textContent || '').trim() === name;
+        });
+        if (el) { el.click(); return true; }
+        return false;
+      }, statusName);
+      if (!clicked) await sleep(1000);
+    }
+    if (!clicked) throw new Error('tab not found: ' + statusName);
     await sleep(3000);
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await sleep(1000);
     const text = await page.evaluate(() => document.body.innerText);
+        const productMap = await page.evaluate(() => {
+          const map = {};
+          document.querySelectorAll('.shop-body').forEach(function(card) {
+            const m = (card.innerText || '').match(/平台订单号：\s*(\d{19})/);
+            if (!m) return;
+            const products = [];
+            card.querySelectorAll('img').forEach(function(im) {
+              const src = im.src || '';
+              if (src.indexOf('ecombdimg') === -1) return;
+              const block = im.closest('[three-index]') || im.parentElement;
+              let title = '';
+              block.querySelectorAll('span').forEach(function(sp) {
+                if (title) return;
+                const a = sp.querySelector('a');
+                if (a && a.textContent.indexOf('编辑简称') !== -1) title = sp.textContent.replace(a.textContent, '').trim();
+              });
+              if (!title) {
+                let best = '';
+                block.querySelectorAll('span').forEach(function(sp) {
+                  const t = (sp.textContent || '').trim();
+                  if (t.length > best.length && t.indexOf('商品ID') === -1 && t.indexOf('商家编码') === -1 && t.indexOf('规格') === -1) best = t;
+                });
+                title = best.replace(/编辑(SKU)?简称/g, '').trim();
+              }
+              let spec = '';
+              block.querySelectorAll('div').forEach(function(d) {
+                if (spec) return;
+                const t = (d.textContent || '').trim();
+                if (t.indexOf('规格名称') === 0) spec = t.replace(/^规格名称：?\s*/, '');
+              });
+              products.push({ img: src, title: title, spec: spec });
+            });
+            map[m[1]] = products;
+          });
+          return map;
+        });
+
     const sections = text.split(/\u5e73\u53f0\u8ba2\u5355\u53f7\uff1a/);
     for (let i = 1; i < sections.length; i++) {
       const sec = sections[i];
@@ -40,6 +90,7 @@ async function extractOrdersFromStatus(page, statusName) {
       const shipMatch = sec.match(/\u63a8\u9001\u65f6\u95f4\uff1a([\d\-:\s]+)/);
       orders.push({
         platformOrderId: orderId, amount, storeName,
+        products: productMap[orderId] || [],
         buyerNote: buyerMatch ? buyerMatch[1].trim() : '',
         sellerNote: sellerMatch ? sellerMatch[1].trim() : '',
         systemNote: systemMatch ? systemMatch[1].trim() : '',
@@ -49,7 +100,7 @@ async function extractOrdersFromStatus(page, statusName) {
         sellerFlagColor: 'rgb(170, 170, 170)', systemFlagColor: 'rgb(170, 170, 170)'
       });
     }
-  } catch(e) { console.log('  Error: ' + e.message); }
+  } catch(e) { console.log('  Error: ' + e.message); return null; }
   return orders;
 }
 
@@ -66,10 +117,13 @@ async function updateData() {
       headless: false,
       args: ['--disable-blink-features=AutomationControlled']
     });
-    const context = await browser.newContext({
+    const SESSION_FILE = path.join(__dirname, '_erp_session.json');
+    const ctxOpts = {
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       viewport: { width: 1280, height: 800 }
-    });
+    };
+    if (fs.existsSync(SESSION_FILE)) ctxOpts.storageState = SESSION_FILE;
+    const context = await browser.newContext(ctxOpts);
     await context.addInitScript(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => false });
     });
@@ -77,10 +131,13 @@ async function updateData() {
     console.log('Logging in...');
     await page.goto(config.ERP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await sleep(3000);
-    const inputs = await page.$$('input');
-    if (inputs.length >= 2) { await inputs[0].fill(config.USERNAME); await inputs[1].fill(config.PASSWORD); }
-    await page.keyboard.press('Enter');
-    await sleep(5000);
+    if (page.url().indexOf('login') !== -1) {
+      const inputs = await page.$$('input');
+      if (inputs.length >= 2) { await inputs[0].fill(config.USERNAME); await inputs[1].fill(config.PASSWORD); }
+      await page.keyboard.press('Enter');
+      await sleep(5000);
+      try { await context.storageState({ path: SESSION_FILE }); } catch(e) {}
+    }
     await page.goto(config.ERP_URL + 'order/check', { waitUntil: 'domcontentloaded', timeout: 30000 });
     await sleep(3000);
     try {
@@ -96,16 +153,24 @@ async function updateData() {
     }
     const tabs = ['\u5df2\u53d1\u8d27', '\u5df2\u63a8\u9001\u5f85\u53d1\u8d27', '\u5df2\u53d1\u8d27\u9000\u6b3e', '\u4ea4\u6613\u5173\u95ed'];
     let all = [];
+    const failedTabs = [];
     for (const t of tabs) {
       console.log('Extracting: ' + t);
       const o = await extractOrdersFromStatus(page, t);
+      if (o === null) { failedTabs.push(t); continue; }
       console.log('  Found: ' + o.length);
       all = all.concat(o);
     }
     const seen = {};
     const deduped = all.filter(o => { if (seen[o.platformOrderId]) return false; seen[o.platformOrderId] = true; return true; });
-    fs.writeFileSync(DATA_FILE, JSON.stringify({ lastUpdate: new Date().toISOString(), totalOrders: deduped.length, orders: deduped }, null, 2), 'utf8');
-    console.log('Done! Total: ' + deduped.length);
+    let archive = [];
+    if (fs.existsSync(DATA_FILE)) {
+      try { archive = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')).orders || []; } catch(e) { archive = []; }
+    }
+    const scrapeOk = deduped.length >= 10 && failedTabs.indexOf('\u5df2\u63a8\u9001\u5f85\u53d1\u8d27') === -1;
+    const merged = mergeOrders(archive, deduped, { allowCancel: scrapeOk });
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ lastUpdate: new Date().toISOString(), totalOrders: merged.orders.length, orders: merged.orders }, null, 2), 'utf8');
+    console.log('Done! Total: ' + merged.orders.length + ' (added ' + merged.added + ', updated ' + merged.updated + ', cancelled ' + merged.cancelled + ')');
     await browser.close();
   } catch(err) {
     console.error('Failed: ' + err.message);
