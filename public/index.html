@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>抖音订单看板 v4</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
@@ -69,6 +70,56 @@ tr.selected{background:#e3f2fd}
 .flag-picker .fp-color{width:28px;height:28px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .15s}
 .flag-picker .fp-color:hover{transform:scale(1.2);border-color:#333}
 .flag-picker .fp-color .fp-label{display:none}
+
+
+@media (max-width:768px){
+  body{font-size:14px}
+  .header{padding:12px 14px;flex-wrap:wrap;gap:8px}
+  .header h1{font-size:1.1em}
+  .header .btn{padding:8px 14px;font-size:.8em;min-height:38px}
+  .container{padding:10px}
+  .filters{padding:12px}
+  .quick-dates{gap:6px}
+  .quick-dates .qd{padding:7px 12px;font-size:.78em;min-height:36px}
+  .filter-row{gap:8px}
+  .filter-group{min-width:0;flex:1 1 calc(50% - 8px)}
+  .filter-group[style*="flex:2"]{flex:1 1 100%}
+  .filter-group[style*="min-width:auto"]{flex:1 1 calc(50% - 8px)}
+  .filter-group select,.filter-group input{min-height:38px;font-size:.85em}
+  .btn{min-height:38px;padding:8px 16px;font-size:.85em}
+  .cards{grid-template-columns:repeat(2,1fr);gap:8px}
+  .card{padding:10px}
+  .card .value{font-size:1.2em}
+  .toolbar{padding:10px;gap:8px;flex-wrap:wrap}
+  .toolbar .flag-btn{width:36px;height:36px;border-width:2px}
+  .toolbar .btn{padding:8px 12px;font-size:.8em;min-height:38px}
+  .toolbar .selected-info{font-size:.78em}
+  .charts{grid-template-columns:1fr;gap:10px}
+  .chart-wrap{height:200px}
+  .table-section{padding:10px}
+  .table-wrap{max-height:400px}
+  table{font-size:.75em}
+  th{padding:6px 4px;font-size:.85em}
+  td{padding:5px 4px}
+  .flag-dot{width:20px;height:20px;border-width:2px}
+  .note-cell{max-width:120px}
+  .status-badge{font-size:.65em;padding:2px 6px}
+  .sync-status{top:auto;bottom:16px;left:50%;transform:translateX(-50%);right:auto;width:80%;text-align:center}
+  .flag-picker{position:fixed;top:auto;left:50%;bottom:20px;transform:translateX(-50%);padding:12px;gap:10px}
+  .flag-picker .fp-color{width:36px;height:36px;border-width:2px}
+}
+
+@media (max-width:400px){
+  .filter-group{flex:1 1 100%}
+  .filter-group[style*="min-width:auto"]{flex:1 1 calc(50% - 8px)}
+  .cards{gap:6px}
+  .card{padding:8px}
+  .card .value{font-size:1em}
+  table{font-size:.7em}
+  th{padding:5px 3px;font-size:.8em}
+  td{padding:4px 3px}
+  .note-cell{max-width:100px}
+}
 </style>
 </head>
 <body>
@@ -319,8 +370,13 @@ function cycleFlag(oid,type,cf){
   var picker=document.getElementById("flagPicker");
   var trigger=event.target;
   var rect=trigger.getBoundingClientRect();
-  picker.style.top=(rect.bottom+window.scrollY+4)+"px";
-  picker.style.left=rect.left+"px";
+  if(window.innerWidth<=768){
+    picker.style.top="auto";picker.style.left="50%";picker.style.bottom="20px";picker.style.transform="translateX(-50%)";
+  }else{
+    picker.style.top=(rect.bottom+window.scrollY+4)+"px";
+    picker.style.left=rect.left+"px";
+    picker.style.bottom="auto";picker.style.transform="none";
+  }
   picker.classList.add("show");
   picker.dataset.oid=oid;
   picker.dataset.type=type;
