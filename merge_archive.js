@@ -23,7 +23,7 @@ function mergeOrders(archiveOrders, scrapedOrders, options) {
     if (existing) {
       existing.status = s.status;
       if (s.amount != null) existing.amount = s.amount;
-      if (s.storeName) existing.storeName = s.storeName;
+      if (s.storeName && !/^\d{19}$/.test(s.storeName)) existing.storeName = s.storeName;
       if (s.buyerNote != null) existing.buyerNote = s.buyerNote;
       if (s.sellerNote != null) existing.sellerNote = s.sellerNote;
       if (s.systemNote != null) existing.systemNote = s.systemNote;

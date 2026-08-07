@@ -111,6 +111,9 @@ async function main() {
           document.querySelectorAll('.shop-body').forEach(function(card) {
             const m = (card.innerText || '').match(/平台订单号：\s*(\d{19})/);
             if (!m) return;
+            let storeName = '';
+            const shopEl = card.querySelector('.shop-header .tooltip-button');
+            if (shopEl) storeName = (shopEl.textContent || '').trim();
             const products = [];
             card.querySelectorAll('img').forEach(function(im) {
               const src = im.src || '';
@@ -138,7 +141,7 @@ async function main() {
               });
               products.push({ img: src, title: title, spec: spec });
             });
-            map[m[1]] = products;
+            map[m[1]] = { storeName: storeName, products: products };
           });
           return map;
         });
@@ -155,7 +158,8 @@ async function main() {
           const amount = amountMatch ? amountMatch[1] : null;
           
           const lines = sec.split('\n').filter(l => l.trim());
-          const storeName = lines.length > 1 ? lines[0].trim() : null;
+          const cardInfo = productMap[orderId] || {};
+          const storeName = cardInfo.storeName || (lines.length > 1 && !/^\d{19}/.test(lines[0].trim()) ? lines[0].trim() : null);
           
           const buyerMatch = sec.match(/\u4e70\u5bb6\u7559\u8a00:\s*(.*?)(?=\n)/);
           const sellerMatch = sec.match(/\u5356\u5bb6\u5907\u6ce8:\s*(.*?)(?=\n)/);
@@ -170,7 +174,7 @@ async function main() {
             sellerNote: sellerMatch ? sellerMatch[1].trim() : '',
             systemNote: systemMatch ? systemMatch[1].trim() : '',
             shipTime: shipMatch ? shipMatch[1].trim().substring(0, 19) : null,
-            products: productMap[orderId] || [],
+            products: cardInfo.products || [],
             status: tabName,
             platform: '\u6296\u97f3',
             sellerFlag: 0,

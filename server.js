@@ -42,6 +42,9 @@ async function extractOrdersFromStatus(page, statusName) {
           document.querySelectorAll('.shop-body').forEach(function(card) {
             const m = (card.innerText || '').match(/平台订单号：\s*(\d{19})/);
             if (!m) return;
+            let storeName = '';
+            const shopEl = card.querySelector('.shop-header .tooltip-button');
+            if (shopEl) storeName = (shopEl.textContent || '').trim();
             const products = [];
             card.querySelectorAll('img').forEach(function(im) {
               const src = im.src || '';
@@ -69,7 +72,7 @@ async function extractOrdersFromStatus(page, statusName) {
               });
               products.push({ img: src, title: title, spec: spec });
             });
-            map[m[1]] = products;
+            map[m[1]] = { storeName: storeName, products: products };
           });
           return map;
         });
@@ -83,14 +86,15 @@ async function extractOrdersFromStatus(page, statusName) {
       const amountMatch = sec.match(/([\d.]+)\uff08\u5171\d+\u4ef6\u5546\u54c1/);
       const amount = amountMatch ? amountMatch[1] : null;
       const lines = sec.split('\n').filter(l => l.trim());
-      const storeName = lines.length > 1 ? lines[0].trim() : null;
+      const cardInfo = productMap[orderId] || {};
+      const storeName = cardInfo.storeName || (lines.length > 1 && !/^\d{19}/.test(lines[0].trim()) ? lines[0].trim() : null);
       const buyerMatch = sec.match(/\u4e70\u5bb6\u7559\u8a00:\s*(.*?)(?=\n)/);
       const sellerMatch = sec.match(/\u5356\u5bb6\u5907\u6ce8:\s*(.*?)(?=\n)/);
       const systemMatch = sec.match(/\u7cfb\u7edf\u5907\u6ce8:\s*(.*?)(?=\n)/);
       const shipMatch = sec.match(/\u63a8\u9001\u65f6\u95f4\uff1a([\d\-:\s]+)/);
       orders.push({
         platformOrderId: orderId, amount, storeName,
-        products: productMap[orderId] || [],
+        products: cardInfo.products || [],
         buyerNote: buyerMatch ? buyerMatch[1].trim() : '',
         sellerNote: sellerMatch ? sellerMatch[1].trim() : '',
         systemNote: systemMatch ? systemMatch[1].trim() : '',
@@ -190,13 +194,30 @@ app.get('/api/update', (req, res) => { res.json({ message: 'started' }); updateD
 
 app.get('/api/groups', (req, res) => {
   res.json({
-    "HKML\u9c7c\u4e4e": ["HKML\u9c7c\u4e4e\u5973\u88c5\u4e13\u5356\u5e97"],
-    "\u4e0a\u548c\u9686": ["\u4e0a\u548c\u9686\u5851\u670d\u9970\u4e13\u5356\u5e97", "\u4e0a\u548c\u9686\u5851\u7814\u670d\u9970\u4e13\u5356\u5e97", "\u4e0a\u548c\u9686\u7814\u670d\u9970\u4e13\u5356\u5e97"],
-    "\u5409\u516c\u5802": ["\u5409\u516c\u5802\u867d\u91cc\u670d\u88c5\u4e13\u5356\u5e97", "\u5409\u516c\u5802\u8d38\u6613\u670d\u9970\u4e13\u5356\u5e97", "\u5409\u516c\u5802\u91cc\u8d38\u670d\u88c5\u4e13\u5356\u5e97", "\u5409\u516c\u5802\u91cc\u8d38\u670d\u9970\u4e13\u5356\u5e97"],
-    "\u6c38\u6625\u5851\u7814": ["\u6c38\u6625\u53bf\u5851\u7814\u8d38\u6613\u5546\u884c\uff08\u4e2a\u4eba\u72ec\u8d44\uff09805\u4f01\u4e1a\u5e97", "\u6c38\u6625\u53bf\u5851\u7814\u8d38\u6613\u5546\u884c\uff08\u4e2a\u4eba\u72ec\u8d44\uff09\u4f01\u4e1a\u5e97"],
-    "\u743c\u6d77\u72b9\u5b9a": ["\u743c\u6d77\u72b9\u5b9a\u5546\u8d27\u884c\uff08\u4e2a\u4eba\u72ec\u8d44\uff09\u4f01\u4e1a\u5e97"],
-    "\u957f\u6c99\u9c7c\u4e4e": ["\u957f\u6c99\u96e8\u82b1\u533a\u9c7c\u4e4e\u9752\u767e\u8d27\u5546\u884c\uff08\u4e2a\u4eba\u72ec\u8d44\uff09\u4f01\u4e1a\u5e97"]
-  });
+  "李1": [
+    "长沙雨花区鱼乎青百货商行（个人独资）企业店",
+    "苏洛寻海犹女装专卖店",
+    "苏洛寻琼海服装专卖店",
+    "HKML鱼乎女装专卖店",
+    "苏洛寻犹定服装专卖店",
+    "苏洛寻海犹服饰专卖店",
+    "琼海犹定商贸行（个人独资）企业店"
+  ],
+  "李2": [
+    "永春县塑研贸易商行（个人独资）805企业店",
+    "上和隆研服饰专卖店",
+    "永春县塑研贸易商行（个人独资）企业店",
+    "上和隆塑研服饰专卖店",
+    "上和隆塑服饰专卖店"
+  ],
+  "李3": [
+    "吉公堂贸易服饰专卖店",
+    "吉公堂里贸服饰专卖店",
+    "吉公堂里贸服装专卖店",
+    "吉公堂虽里女装专卖店",
+    "吉公堂虽里服装专卖店"
+  ]
+});
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
