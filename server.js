@@ -14,6 +14,48 @@ if (!fs.existsSync(path.dirname(DATA_FILE))) {
   fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
 }
 
+const { loadToken, saveToken, syncOrders } = require('./erp_sync.js');
+app.use(express.json());
+
+const SYNC_KEY_FILE = path.join(__dirname, 'sync_key.txt');
+let SYNC_KEY = fs.existsSync(SYNC_KEY_FILE) ? fs.readFileSync(SYNC_KEY_FILE, 'utf8').trim() : '';
+if (!SYNC_KEY) {
+  SYNC_KEY = require('crypto').randomBytes(4).toString('hex');
+  fs.writeFileSync(SYNC_KEY_FILE, SYNC_KEY);
+}
+console.log('[sync] 同步密钥: ' + SYNC_KEY);
+
+function checkSyncKey(req, res) {
+  if ((req.headers['x-sync-key'] || '') !== SYNC_KEY) {
+    res.status(403).json({ ok: false, msg: '同步密钥错误' });
+    return false;
+  }
+  return true;
+}
+
+app.post('/api/sync', async (req, res) => {
+  if (!checkSyncKey(req, res)) return;
+  const changes = (req.body && req.body.changes) || [];
+  if (!changes.length) return res.json({ ok: false, msg: '没有需要同步的修改' });
+  const token = loadToken();
+  if (!token) return res.json({ ok: false, msg: '服务器未配置ERP令牌，请在本地运行 node login_erp.js 上传' });
+  try {
+    const results = await syncOrders(token, changes);
+    res.json({ ok: results.every(function (r) { return r.ok; }), results: results });
+  } catch (e) {
+    res.json({ ok: false, msg: e.message });
+  }
+});
+
+app.post('/api/token', (req, res) => {
+  if (!checkSyncKey(req, res)) return;
+  const t = (req.body && req.body.token) || '';
+  if (t.indexOf('Bearer ') !== 0) return res.json({ ok: false, msg: 'token格式不对' });
+  saveToken(t);
+  console.log('[sync] ERP令牌已更新');
+  res.json({ ok: true });
+});
+
 async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function extractOrdersFromStatus(page, statusName) {

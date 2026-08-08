@@ -69,6 +69,7 @@ tr.selected{background:#e3f2fd}
 .sync-status.show{display:block}
 .sync-info{background:#2196f3;color:#fff}
 .sync-success{background:#4caf50;color:#fff}
+.sync-error{background:#f44336;color:#fff}
 .selected-info{font-size:.85em;color:#666}
 
 .flag-picker{position:absolute;background:#fff;border:1px solid #ddd;border-radius:8px;padding:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:9999;display:none}
@@ -492,11 +493,35 @@ else{b.style.display="none";btn.disabled=true;}
 function syncToERP(){
 var cl=Object.entries(changes).map(function(e){return Object.assign({orderId:e[0]},e[1]);});
 if(!cl.length)return showStatus("没有修改","info");
+if(location.protocol==="http:"||location.protocol==="https:"){
+var key=localStorage.getItem("syncKey")||"";
+if(!key){key=prompt("首次同步需要输入同步密钥（服务器上运行 pm2 logs order-dashboard 查看）")||"";if(!key)return;localStorage.setItem("syncKey",key);}
+showStatus("正在同步到风速分销...","info");
+fetch("/api/sync",{method:"POST",headers:{"content-type":"application/json","x-sync-key":key},body:JSON.stringify({changes:cl})})
+.then(function(r){if(r.status===403){localStorage.removeItem("syncKey");throw new Error("同步密钥错误，请重新点击同步并输入正确密钥");}return r.json();})
+.then(function(res){
+if(res.ok===false&&!res.results){showStatus(res.msg||"同步失败","error");return;}
+var failMsgs=[];
+res.results.forEach(function(r2){
+if(r2.ok){
+var o=RAW_DATA.find(function(x){return x.platformOrderId===r2.orderId;});
+var c=changes[r2.orderId];
+if(o&&c){Object.keys(c).forEach(function(k){o[k]=c[k];});}
+delete changes[r2.orderId];
+}else{failMsgs.push(r2.orderId+":"+r2.msg);}
+});
+updateChangeCount();renderTable();
+if(failMsgs.length)showStatus(failMsgs.length+"条未同步："+failMsgs[0],"error");
+else showStatus("已同步 "+res.results.length+" 条修改到风速分销","success");
+})
+.catch(function(e){showStatus(e.message,"error");});
+return;
+}
 var p={action:"sync_notes",changes:cl};
 var bl=new Blob([JSON.stringify(p,null,2)],{type:"application/json"});
 var u=URL.createObjectURL(bl);
 var a=document.createElement("a");a.href=u;a.download="sync_"+Date.now()+".json";a.click();
-showStatus("已导出"+cl.length+"条修改","success");
+showStatus("已导出"+cl.length+"条修改（本地文件模式无法直接同步）","success");
 }
 
 function showStatus(m,t){var e=document.getElementById("syncStatus");e.textContent=m;e.className="sync-status show sync-"+t;setTimeout(function(){e.className="sync-status";},3000);}

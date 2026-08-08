@@ -16,3 +16,15 @@ check_dupes.js
 groups.json
 package-lock.json
 .DS_Store
+erp_token.txt
+sync_key.txt
+sync_config.json
+_erp_session.json
+orders_archive.json
+_explore*.js
+_js_*
+_erp_*
+_srv_*.log
+_test_*.js
+_ui_*.png
+_embed_test/
