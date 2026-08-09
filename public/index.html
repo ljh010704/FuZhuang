@@ -128,6 +128,7 @@ tr.selected{background:#e3f2fd}
 <div class="header">
 <div><h1>抖音订单统计看板</h1><div style="font-size:.85em;opacity:.8;margin-top:4px">勾选订单 → 选旗帜颜色 → 批量设置旗帜/备注</div></div>
 <div style="display:flex;gap:8px;align-items:center">
+<span id="lastUpdate" style="font-size:.8em;opacity:.9"></span>
 <span id="changeCount" style="font-size:.85em;display:none">0处修改</span>
 <button class="btn btn-primary" id="syncBtn" disabled>同步到ERP</button>
 <a class="btn btn-secondary" href="express_stats.html" style="text-decoration:none">退货快递统计</a>
@@ -545,6 +546,25 @@ initGroups();
 initStores("");
 setFlagColor(0);
 sortAndRender();
+var lastUpdateEl=document.getElementById("lastUpdate");
+function showLastUpdate(){if(window.LAST_UPDATE&&lastUpdateEl){lastUpdateEl.textContent="更新于 "+window.LAST_UPDATE;}}
+showLastUpdate();
+function bgRefresh(){
+if(Object.keys(changes).length)return;
+if(document.activeElement&&document.activeElement.tagName==="TEXTAREA")return;
+fetch("dashboard_data.js?t="+Date.now()).then(function(r){return r.text();}).then(function(txt){
+var m=txt.match(/window\.RAW_DATA = (\[.*\]);/s);
+var mu=txt.match(/window\.LAST_UPDATE = "([^"]*)"/);
+if(!m)return;
+if(window.LAST_UPDATE&&mu&&mu[1]===window.LAST_UPDATE)return;
+var nd=JSON.parse(m[1]);
+RAW_DATA.splice(0,RAW_DATA.length);nd.forEach(function(o){RAW_DATA.push(o);});
+if(mu)window.LAST_UPDATE=mu[1];
+showLastUpdate();
+applyFilters();
+}).catch(function(){});
+}
+setInterval(bgRefresh,120000);
 </script>
 
 <div class="flag-picker" id="flagPicker">

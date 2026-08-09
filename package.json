@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "douyin-order-dashboard",
   "version": "1.0.0",
   "description": "抖音订单统计看板",
@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "express": "^4.18.2",
-    "playwright": "^1.40.0",
-    "node-cron": "^3.0.3"
+    "playwright": "^1.40.0"
   }
 }
