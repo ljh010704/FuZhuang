@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>抖音订单看板 v4</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-const STORE_GROUPS = {"李1":["长沙雨花区鱼乎青百货商行（个人独资）企业店","苏洛寻海犹女装专卖店","苏洛寻琼海服装专卖店","HKML鱼乎女装专卖店","苏洛寻犹定服装专卖店","苏洛寻海犹服饰专卖店","琼海犹定商贸行（个人独资）企业店"],"李2":["永春县塑研贸易商行（个人独资）805企业店","上和隆研服饰专卖店","永春县塑研贸易商行（个人独资）企业店","上和隆塑研服饰专卖店","上和隆塑服饰专卖店"],"李3":["吉公堂贸易服饰专卖店","吉公堂里贸服饰专卖店","吉公堂里贸服装专卖店","吉公堂虽里女装专卖店","吉公堂虽里服装专卖店"]};
-</script>
 <script src="dashboard_data.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -133,6 +130,7 @@ tr.selected{background:#e3f2fd}
 <div style="display:flex;gap:8px;align-items:center">
 <span id="changeCount" style="font-size:.85em;display:none">0处修改</span>
 <button class="btn btn-primary" id="syncBtn" disabled>同步到ERP</button>
+<a class="btn btn-secondary" href="express_stats.html" style="text-decoration:none">退货快递统计</a>
 </div>
 </div>
 <div class="sync-status" id="syncStatus"></div>

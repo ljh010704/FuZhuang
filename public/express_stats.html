@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>退货快递统计</title>
+<script src="dashboard_data.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,sans-serif;background:#f0f2f5;color:#333}
+.header{background:linear-gradient(135deg,#fe2c55,#25f4ee);color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.header h1{font-size:1.25em}
+.header .sub{font-size:.82em;opacity:.85;margin-top:3px}
+.header .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.container{padding:14px}
+.filters{background:#fff;border-radius:10px;padding:14px;margin-bottom:12px}
+.filter-row{display:flex;flex-wrap:wrap;gap:10px}
+.filter-group{display:flex;flex-direction:column;gap:4px;min-width:110px}
+.filter-group label{font-size:.78em;color:#666}
+.filter-group input,.filter-group select{padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:.85em}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px}
+.card{background:#fff;border-radius:10px;padding:14px;text-align:center}
+.card .value{font-size:1.5em;font-weight:700;color:#fe2c55}
+.card .label{font-size:.78em;color:#888;margin-top:4px}
+.table-section{background:#fff;border-radius:10px;padding:14px;margin-bottom:12px}
+.table-section h3{margin-bottom:10px;font-size:1em}
+.table-wrap{overflow-x:auto;max-height:520px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:.82em}
+th,td{border-bottom:1px solid #eee;padding:7px 8px;text-align:left;white-space:nowrap}
+th{background:#fafafa;position:sticky;top:0}
+tr.detail-row td{background:#fbfbfb;white-space:normal;font-size:.78em}
+.btn{padding:7px 14px;border:none;border-radius:6px;font-size:.85em;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+.btn-primary{background:#fe2c55;color:#fff}
+.btn-secondary{background:#eee;color:#333}
+.btn-mini{padding:3px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;font-size:.78em}
+.tracking{font-family:Consolas,monospace;background:#f5f5f5;padding:1px 5px;border-radius:3px}
+.mono{font-family:Consolas,monospace}
+.note-full{white-space:normal;word-break:break-all;min-width:260px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.75em;font-weight:600}
+.badge-ex{background:#fff3e0;color:#e65100}
+@media(max-width:768px){
+  .filter-group{min-width:45%;flex:1}
+  .cards{grid-template-columns:repeat(2,1fr)}
+  th,td{font-size:.75em;padding:5px 6px}
+}
+@media(max-width:400px){
+  .filter-group{min-width:100%}
+  .header{flex-direction:column;align-items:flex-start}
+  .header .right{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="header">
+<div><h1>退货快递统计</h1><div class="sub">依据卖家备注中的退货快递单号统计（809=8月9日，邮政快递包裹=换单，前旧后新）</div></div>
+<div class="right">
+<a class="btn btn-secondary" href="index.html" style="text-decoration:none">返回订单看板</a>
+<button class="btn btn-primary" id="btnExportDaily">导出每日统计</button>
+<button class="btn btn-primary" id="btnExportExchange">导出换单清单</button>
+</div>
+</div>
+<div class="container">
+<div class="filters">
+<div class="filter-row">
+<div class="filter-group"><label>开始日期</label><input type="date" id="startDate"></div>
+<div class="filter-group"><label>结束日期</label><input type="date" id="endDate"></div>
+<div class="filter-group"><label>店铺分组</label><select id="groupFilter"><option value="">全部分组</option></select></div>
+<div class="filter-group"><label>店铺</label><select id="storeFilter"><option value="">全部</option></select></div>
+<div class="filter-group" style="flex:1"><label>搜索（单号/订单号/备注）</label><input type="text" id="searchInput" placeholder="快递单号或订单号"></div>
+<div class="filter-group"><label>&nbsp;</label><button class="btn btn-primary" id="btnFilter">筛选</button></div>
+<div class="filter-group"><label>&nbsp;</label><button class="btn btn-secondary" id="btnReset">重置</button></div>
+</div>
+</div>
+<div class="cards">
+<div class="card"><div class="value" id="cardTotal">0</div><div class="label">退货快递总件数</div></div>
+<div class="card"><div class="value" id="cardExchange">0</div><div class="label">换单单数</div></div>
+<div class="card"><div class="value" id="cardStores">0</div><div class="label">涉及店铺数</div></div>
+<div class="card"><div class="value" id="cardDays">0</div><div class="label">发货天数</div></div>
+</div>
+<div class="table-section">
+<h3>每日退货快递</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>日期</th><th>件数</th><th>快递单号</th><th style="width:70px"></th></tr></thead>
+<tbody id="dailyBody"></tbody>
+</table>
+</div>
+</div>
+<div class="table-section">
+<h3>换单清单（旧单号 → 新单号）</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>日期</th><th>店铺</th><th>订单号</th><th>旧单号</th><th>新单号</th><th>卖家备注原文</th></tr></thead>
+<tbody id="exchangeBody"></tbody>
+</table>
+</div>
+</div>
+<div class="table-section" id="unknownSection" style="display:none">
+<h3>未识别备注</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>店铺</th><th>订单号</th><th>卖家备注原文</th></tr></thead>
+<tbody id="unknownBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<script>
+function pad(n){return n<10?'0'+n:''+n;}
+function getStoreGroup(sn){
+if(!sn)return '';
+for(var g in STORE_GROUPS){if(STORE_GROUPS[g].indexOf(sn)>=0)return g;}
+return '';
+}
+function parseDateToken(tok){
+if(!/^\d{3,4}$/.test(tok))return null;
+var mo,day;
+if(tok.length===3){mo=+tok[0];day=+tok.slice(1);}
+else{mo=+tok.slice(0,2);day=+tok.slice(2);}
+if(mo<1||mo>12||day<1||day>31)return null;
+return {mo:mo,day:day};
+}
+function noteYear(o){var m=(o.shipTime||'').match(/^(\d{4})/);return m?m[1]:'2026';}
+function dateKey(y,d){return y+'-'+pad(d.mo)+'-'+pad(d.day);}
+function extractMain(note){
+var out=[];var re=/(?:^|\s)(\d{3,4})[ ]+(\d{13})(?=\s|$)/g;var m;
+while((m=re.exec(note))){
+var d=parseDateToken(m[1]);
+if(d)out.push({date:d,tracking:m[2]});
+}
+return out;
+}
+function extractExchange(note){
+var m=note.match(/邮政快递包裹(\d{13}),(\d{13})/);
+return m?{oldNum:m[1],newNum:m[2]}:null;
+}
+var allOrders=RAW_DATA;
+var parsed=[],unknown=[];
+allOrders.forEach(function(o){
+var note=(o.sellerNote||'').trim();
+if(!note)return;
+var mains=extractMain(note);
+var ex=extractExchange(note);
+if(!mains.length&&!ex){unknown.push({order:o,note:note});return;}
+parsed.push({order:o,note:note,mains:mains,exchange:ex});
+});
+function currentFilters(){
+return {
+start:document.getElementById('startDate').value,
+end:document.getElementById('endDate').value,
+group:document.getElementById('groupFilter').value,
+store:document.getElementById('storeFilter').value,
+q:(document.getElementById('searchInput').value||'').trim()
+};
+}
+function orderMatch(o,f){
+if(f.group&&getStoreGroup(o.storeName)!==f.group)return false;
+if(f.store&&o.storeName!==f.store)return false;
+if(f.q){
+var q=f.q;
+var hit=String(o.platformOrderId).indexOf(q)>=0||String(o.sellerNote||'').indexOf(q)>=0;
+if(!hit)return false;
+}
+return true;
+}
+function inRange(key,f){
+if(f.start&&key<f.start)return false;
+if(f.end&&key>f.end)return false;
+return true;
+}
+function lastMainOf(r){return r.mains.length?r.mains[r.mains.length-1]:null;}
+function buildDaily(rows,f){
+var map={};
+rows.forEach(function(r){
+r.mains.forEach(function(main){
+var key=dateKey(noteYear(r.order),main.date);
+if(!inRange(key,f))return;
+if(!map[key])map[key]={count:0,items:[]};
+map[key].count++;
+map[key].items.push({order:r.order,tracking:main.tracking,note:r.note});
+});
+});
+return map;
+}
+function buildExchange(rows,f){
+var out=[];
+rows.forEach(function(r){
+if(!r.exchange)return;
+if(!orderMatch(r.order,f))return;
+var lm=lastMainOf(r);
+var key=lm?dateKey(noteYear(r.order),lm.date):'';
+if(lm&&!inRange(key,f))return;
+if(!lm&&(f.start||f.end))return;
+out.push({r:r,key:key});
+});
+return out;
+}
+function render(){
+var f=currentFilters();
+var rows=parsed.filter(function(r){return orderMatch(r.order,f);});
+var daily=buildDaily(rows,f);
+var exchange=buildExchange(rows,f);
+var unk=unknown.filter(function(r){return orderMatch(r.order,f);});
+var keys=Object.keys(daily).sort();
+var total=0;
+keys.forEach(function(k){total+=daily[k].count;});
+var stores={};
+rows.forEach(function(r){if(r.order.storeName)stores[r.order.storeName]=1;});
+exchange.forEach(function(x){stores[x.r.order.storeName]=1;});
+document.getElementById('cardTotal').textContent=total;
+document.getElementById('cardExchange').textContent=exchange.length;
+document.getElementById('cardStores').textContent=Object.keys(stores).length;
+document.getElementById('cardDays').textContent=keys.length;
+var tb=document.getElementById('dailyBody');tb.innerHTML='';
+keys.forEach(function(k){
+var d=daily[k];
+var tr=document.createElement('tr');
+var td1=document.createElement('td');td1.textContent=k;
+var td2=document.createElement('td');td2.textContent=d.count;
+var td3=document.createElement('td');
+d.items.forEach(function(it,i){
+if(i>0)td3.appendChild(document.createTextNode('  '));
+var sp=document.createElement('span');sp.className='tracking';sp.textContent=it.tracking;
+td3.appendChild(sp);
+});
+var td4=document.createElement('td');
+var btn=document.createElement('button');btn.className='btn-mini';btn.textContent='展开';
+var detailTr=document.createElement('tr');detailTr.style.display='none';detailTr.className='detail-row';
+var dt=document.createElement('td');dt.colSpan=4;
+d.items.forEach(function(it){
+var line=document.createElement('div');line.style.margin='3px 0';
+line.textContent='店铺：'+it.order.storeName+'｜订单号：'+it.order.platformOrderId+'｜单号：'+it.tracking+'｜备注：'+it.note;
+dt.appendChild(line);
+});
+detailTr.appendChild(dt);
+btn.onclick=function(){detailTr.style.display=detailTr.style.display==='none'?'':'none';};
+td4.appendChild(btn);
+tr.appendChild(td1);tr.appendChild(td2);tr.appendChild(td3);tr.appendChild(td4);
+tb.appendChild(tr);tb.appendChild(detailTr);
+});
+var eb=document.getElementById('exchangeBody');eb.innerHTML='';
+exchange.forEach(function(x){
+var r=x.r;
+var tr=document.createElement('tr');
+var td1=document.createElement('td');td1.textContent=x.key||'-';
+var td2=document.createElement('td');td2.textContent=r.order.storeName;
+var td3=document.createElement('td');td3.className='mono';td3.textContent=r.order.platformOrderId;
+var td4=document.createElement('td');td4.className='mono';td4.textContent=r.exchange.oldNum;
+var td5=document.createElement('td');td5.className='mono';td5.textContent=r.exchange.newNum;
+var td6=document.createElement('td');td6.className='note-full';td6.textContent=r.note;
+tr.appendChild(td1);tr.appendChild(td2);tr.appendChild(td3);tr.appendChild(td4);tr.appendChild(td5);tr.appendChild(td6);
+eb.appendChild(tr);
+});
+var us=document.getElementById('unknownSection');
+var ub=document.getElementById('unknownBody');ub.innerHTML='';
+if(unk.length){
+us.style.display='';
+unk.forEach(function(r){
+var tr=document.createElement('tr');
+var td1=document.createElement('td');td1.textContent=r.order.storeName;
+var td2=document.createElement('td');td2.className='mono';td2.textContent=r.order.platformOrderId;
+var td3=document.createElement('td');td3.className='note-full';td3.textContent=r.note;
+tr.appendChild(td1);tr.appendChild(td2);tr.appendChild(td3);
+ub.appendChild(tr);
+});
+}else{us.style.display='none';}
+}
+function csvCell(v){return '"'+String(v).replace(/"/g,'""')+'"';}
+function exportCSV(filename,rows){
+var csv=rows.map(function(r){return r.map(csvCell).join(',');}).join('\r\n');
+var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+var url=URL.createObjectURL(blob);
+var a=document.createElement('a');a.href=url;a.download=filename;a.click();
+setTimeout(function(){URL.revokeObjectURL(url);},2000);
+}
+function exportDaily(){
+var f=currentFilters();
+var rows=parsed.filter(function(r){return orderMatch(r.order,f);});
+var daily=buildDaily(rows,f);
+var keys=Object.keys(daily).sort();
+var out=[['日期','件数','快递单号']];
+keys.forEach(function(k){
+out.push([k,daily[k].count,daily[k].items.map(function(it){return it.tracking;}).join(';')]);
+});
+exportCSV('每日退货统计.csv',out);
+}
+function exportExchange(){
+var f=currentFilters();
+var rows=parsed.filter(function(r){return orderMatch(r.order,f);});
+var exchange=buildExchange(rows,f);
+var out=[['日期','店铺','订单号','旧单号','新单号','卖家备注原文']];
+exchange.forEach(function(x){
+out.push([x.key||'',x.r.order.storeName,x.r.order.platformOrderId,x.r.exchange.oldNum,x.r.exchange.newNum,x.r.note]);
+});
+exportCSV('换单清单.csv',out);
+}
+function initGroups(){
+var gs=document.getElementById('groupFilter');
+gs.innerHTML='<option value="">全部分组</option>';
+Object.keys(STORE_GROUPS).sort().forEach(function(g){
+var op=document.createElement('option');op.value=g;op.textContent=g;gs.appendChild(op);
+});
+initStores('');
+}
+function initStores(group){
+var sel=document.getElementById('storeFilter');
+var cur=sel.value;
+sel.innerHTML='<option value="">全部</option>';
+var stores=[];
+allOrders.forEach(function(o){var s=o.storeName;if(!s)return;if(group&&getStoreGroup(s)!==group)return;if(stores.indexOf(s)<0)stores.push(s);});
+stores.sort();
+stores.forEach(function(s){var op=document.createElement('option');op.value=s;op.textContent=s;sel.appendChild(op);});
+if(cur&&stores.indexOf(cur)>=0)sel.value=cur;
+}
+document.getElementById('btnFilter').onclick=render;
+document.getElementById('btnReset').onclick=function(){
+document.getElementById('startDate').value='';
+document.getElementById('endDate').value='';
+document.getElementById('groupFilter').value='';
+document.getElementById('searchInput').value='';
+initStores('');
+render();
+};
+document.getElementById('groupFilter').onchange=function(){initStores(this.value);render();};
+document.getElementById('storeFilter').onchange=render;
+document.getElementById('btnExportDaily').onclick=exportDaily;
+document.getElementById('btnExportExchange').onclick=exportExchange;
+initGroups();
+render();
+</script>
+</body>
+</html>
