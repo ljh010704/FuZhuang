@@ -1,18 +1,13 @@
 const fs = require('fs');
 
-// 将最新数据嵌入看板：只替换 public/index.html 里的 RAW_DATA 数据行，
-// 保留看板现有的全部样式与交互（手机适配、旗帜选择器等）。
-
+// 将最新数据写入 public/dashboard_data.js（外部数据文件）
+// 数据外置后，index.html 不再内嵌订单，避免大数据撑爆文件/上下文。
 var dataContent = fs.readFileSync('./dashboard_data.js', 'utf8');
 var dataJson = dataContent.replace(/^const RAW_DATA = /, '').replace(/;\s*$/, '').trim();
 
-var html = fs.readFileSync('./public/index.html', 'utf8');
-var re = /^const RAW_DATA = \[.*\];$/m;
-if (!re.test(html)) {
-  console.error('未找到 RAW_DATA 数据行，未做修改');
-  process.exit(1);
-}
-html = html.replace(re, function() { return 'const RAW_DATA = ' + dataJson + ';'; });
-fs.writeFileSync('./public/index.html', html, 'utf8');
-console.log('数据已嵌入 public/index.html');
-console.log('文件大小:', html.length);
+var out = '// 看板数据文件：由 embed_data.js 自动生成，请勿手改\n' +
+          '// 数据外置后，index.html 不再内嵌订单，文件体积大幅减小\n' +
+          'window.RAW_DATA = ' + dataJson + ';\n';
+fs.writeFileSync('./public/dashboard_data.js', out, 'utf8');
+console.log('数据已写入 public/dashboard_data.js');
+console.log('文件大小:', out.length);
