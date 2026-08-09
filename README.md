@@ -47,6 +47,8 @@ pm2 startup
 ## 文件结构
 - `server.js` - 后端服务（Express + Playwright）
 - `public/index.html` - 看板前端
+- `public/dashboard_data.js` - 订单数据（由 `embed_data.js` 生成，看板运行时加载，不内嵌在 HTML 中）
+- `update.bat` - 本地更新数据流程（extract_data.js 抓取 → embed_data.js 生成数据文件）
 - `data/orders.json` - 订单数据缓存
 - `package.json` - 依赖配置
 
