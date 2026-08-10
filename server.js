@@ -71,12 +71,12 @@ function seedArchiveFromDashboard() {
 async function refreshData() {
   if (refreshing) return;
   refreshing = true;
-  const token = loadToken();
-  if (!token) {
-    console.log('[fetch] 未配置 ERP 令牌，跳过更新（本地运行 node login_erp.js 上传令牌）');
-    return;
-  }
   try {
+    const token = loadToken();
+    if (!token) {
+      console.log('[fetch] 未配置 ERP 令牌，跳过更新（本地运行 node login_erp.js 上传令牌）');
+      return;
+    }
     const orders = await fetchOrders(token);
     let archive = [];
     if (fs.existsSync(ARCHIVE_FILE)) {

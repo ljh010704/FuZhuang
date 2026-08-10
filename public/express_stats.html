@@ -334,7 +334,7 @@ document.getElementById('btnExportExchange').onclick=exportExchange;
 initGroups();
 render();
 var lastUpdateEl=document.getElementById("lastUpdate");
-function showLastUpdate(){if(window.LAST_UPDATE&&lastUpdateEl)lastUpdateEl.textContent="??? "+window.LAST_UPDATE;}
+function showLastUpdate(){if(window.LAST_UPDATE&&lastUpdateEl)lastUpdateEl.textContent="更新于 "+window.LAST_UPDATE;}
 showLastUpdate();
 function bgRefresh(){
 if(document.activeElement&&(document.activeElement.tagName==="INPUT"||document.activeElement.tagName==="SELECT"))return;
