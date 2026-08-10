@@ -7,106 +7,162 @@
 <script src="dashboard_data.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,sans-serif;background:#f0f2f5;color:#333}
-.header{background:linear-gradient(135deg,#fe2c55,#25f4ee);color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.header h1{font-size:1.25em}
-.header .sub{font-size:.82em;opacity:.85;margin-top:3px}
-.header .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.container{padding:14px}
-.filters{background:#fff;border-radius:10px;padding:14px;margin-bottom:12px}
-.filter-row{display:flex;flex-wrap:wrap;gap:10px}
-.filter-group{display:flex;flex-direction:column;gap:4px;min-width:110px}
-.filter-group label{font-size:.78em;color:#666}
-.filter-group input,.filter-group select{padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:.85em}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px}
-.card{background:#fff;border-radius:10px;padding:14px;text-align:center}
-.card .value{font-size:1.5em;font-weight:700;color:#fe2c55}
-.card .label{font-size:.78em;color:#888;margin-top:4px}
-.table-section{background:#fff;border-radius:10px;padding:14px;margin-bottom:12px}
-.table-section h3{margin-bottom:10px;font-size:1em}
+:root{
+  --yellow:#fec56d; --peach:#ffb38a; --blue:#a0e3ff; --pink:#f79cc1;
+  --mint:#91f9d3; --lav:#c6deff; --coral:#fb9d79; --lem:#fff3c9;
+  --ink:#4a3f35; --ink2:#9a8b7d; --ink3:#c9bdb0;
+  --card:#ffffff; --radius:18px;
+  --shadow:0 8px 24px rgba(160,120,80,.10);
+}
+html{-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#faf6f1;color:var(--ink);min-height:100vh;overflow-x:hidden}
+.bg-blob{position:fixed;border-radius:50%;filter:blur(70px);opacity:.45;z-index:0;pointer-events:none}
+.bg-blob.b1{width:440px;height:440px;background:#ffd9a0;top:-140px;right:-90px}
+.bg-blob.b2{width:400px;height:400px;background:#b8e6ff;top:28%;left:-160px}
+.bg-blob.b3{width:360px;height:360px;background:#ffc9de;bottom:-120px;right:24%}
+.bg-blob.b4{width:320px;height:320px;background:#c9f5d8;bottom:6%;left:26%}
+.hero{position:relative;z-index:1;background:linear-gradient(120deg,#c9ecff 0%,#c9f5d8 45%,#ffe3ae 100%);padding:24px 26px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.hero h1{font-size:1.75em;font-weight:800;color:#3d5a4a;letter-spacing:.5px;display:flex;align-items:center;gap:10px}
+.hero .sub{margin-top:5px;font-size:.84em;color:#4a6a58;opacity:.9}
+.hero-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{background:rgba(255,255,255,.55);backdrop-filter:blur(6px);border-radius:14px;padding:6px 12px;font-size:.8em;color:#4a6a58;font-weight:600}
+.container{position:relative;z-index:1;max-width:1520px;margin:0 auto;padding:18px 20px 80px}
+.panel{background:rgba(255,255,255,.93);backdrop-filter:blur(8px);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.panel-head h2{font-size:1.02em;font-weight:800;color:#6b5a4a}
+.panel-head .arrow{transition:transform .25s;color:var(--ink2);font-size:.9em}
+.panel.collapsed .collapse-body{display:none}
+.panel.collapsed .arrow{transform:rotate(-90deg)}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.stat-card{border-radius:var(--radius);padding:18px 20px;color:#5b4636;box-shadow:var(--shadow);position:relative;overflow:hidden;min-width:0}
+.stat-card::after{content:"";position:absolute;right:-22px;top:-22px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.35)}
+.stat-card .icon{font-size:1.5em;margin-bottom:4px}
+.stat-card .value{font-size:1.65em;font-weight:800;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-card .label{font-size:.78em;font-weight:700;opacity:.75;margin-top:2px}
+.stat-c-total{background:linear-gradient(135deg,#d8eeff,#a0e3ff)}
+.stat-c-exchange{background:linear-gradient(135deg,#ffe3ae,#fec56d)}
+.stat-c-stores{background:linear-gradient(135deg,#ffd9e7,#f79cc1)}
+.stat-c-days{background:linear-gradient(135deg,#d3fbd9,#91f9d3)}
+.filter-row{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-top:14px}
+.filter-group{display:flex;flex-direction:column;gap:5px;min-width:130px;flex:1}
+.filter-group label{font-size:.76em;color:var(--ink2);font-weight:700}
+.filter-group select,.filter-group input{padding:8px 10px;border:1.5px solid #eee2d4;border-radius:10px;font-size:.85em;background:#fffdf9;color:var(--ink);outline:none;transition:border-color .15s}
+.filter-group select:focus,.filter-group input:focus{border-color:var(--yellow)}
+.btn{padding:8px 16px;border:none;border-radius:11px;font-size:.84em;font-weight:700;cursor:pointer;transition:all .18s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:linear-gradient(120deg,#fec56d,#ff9f9f);color:#5b4636;box-shadow:0 4px 12px rgba(254,197,109,.4)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(254,197,109,.5)}
+.btn-secondary{background:#f2eae0;color:#6b5a4a}
+.btn-secondary:hover{background:#ecdfd0}
+.btn-ghost{background:transparent;color:#4a6a58;border:1.5px solid rgba(74,106,88,.35)}
+.btn-mini{padding:3px 12px;border:none;border-radius:9px;background:linear-gradient(120deg,#fec56d,#ff9f9f);color:#5b4636;cursor:pointer;font-size:.76em;font-weight:700}
+.table-section{padding:0;overflow:hidden}
+.table-section>.panel-title{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #f0e3d3}
+.table-section h3{font-size:.98em;font-weight:800;color:#6b5a4a}
 .table-wrap{overflow-x:auto;max-height:520px;overflow-y:auto}
 table{width:100%;border-collapse:collapse;font-size:.82em}
-th,td{border-bottom:1px solid #eee;padding:7px 8px;text-align:left;white-space:nowrap}
-th{background:#fafafa;position:sticky;top:0}
-tr.detail-row td{background:#fbfbfb;white-space:normal;font-size:.78em}
-.btn{padding:7px 14px;border:none;border-radius:6px;font-size:.85em;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
-.btn-primary{background:#fe2c55;color:#fff}
-.btn-secondary{background:#eee;color:#333}
-.btn-mini{padding:3px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;font-size:.78em}
-.tracking{font-family:Consolas,monospace;background:#f5f5f5;padding:1px 5px;border-radius:3px}
-.mono{font-family:Consolas,monospace}
-.note-full{white-space:normal;word-break:break-all;min-width:260px}
-.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.75em;font-weight:600}
-.badge-ex{background:#fff3e0;color:#e65100}
+th{background:#faf4ec;padding:10px 10px;text-align:left;font-weight:700;color:#9a8b7d;position:sticky;top:0;border-bottom:1px solid #f0e3d3;z-index:2;white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid #f6f0e8;text-align:left;vertical-align:top;white-space:nowrap}
+tr.detail-row td{background:#fffaf2;white-space:normal;font-size:.78em;border-bottom:none}
+.tracking{font-family:Consolas,monospace;background:#fdf3e3;color:#d97b1f;padding:2px 7px;border-radius:7px;font-weight:700;margin-right:4px;display:inline-block;margin-bottom:2px}
+.mono{font-family:Consolas,monospace;color:#6b5a4a}
+.note-full{white-space:normal;word-break:break-all;min-width:280px}
+.badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:.74em;font-weight:800}
+.badge-ex{background:#ffe8d0;color:#d97b1f}
+.empty-tip{text-align:center;padding:36px;color:var(--ink3);font-size:.9em}
+@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){
-  .filter-group{min-width:45%;flex:1}
-  .cards{grid-template-columns:repeat(2,1fr)}
-  th,td{font-size:.75em;padding:5px 6px}
+  body{font-size:14px}
+  .hero{padding:16px 14px}
+  .hero h1{font-size:1.25em}
+  .container{padding:12px 10px 60px}
+  .panel{padding:14px}
+  .filter-group{min-width:0;flex:1 1 calc(50% - 8px)}
+  .filter-group.full{flex:1 1 100%}
+  .stat-card{padding:14px}
+  .stat-card .value{font-size:1.3em}
+  th,td{font-size:.74em;padding:7px 5px}
 }
 @media(max-width:400px){
-  .filter-group{min-width:100%}
-  .header{flex-direction:column;align-items:flex-start}
-  .header .right{width:100%}
-}
-</style>
+  .stat-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .filter-group{flex:1 1 100%}
+  .hero-actions{width:100%}
+  .hero-actions .btn,.hero-actions .pill{flex:1;justify-content:center}
+}</style>
 </head>
 <body>
-<div class="header">
-<div><h1>退货快递统计</h1><div class="sub">依据卖家备注中的退货快递单号统计（809=8月9日，邮政快递包裹=换单，前旧后新）</div></div>
-<div class="right">
-<span id="lastUpdate" style="font-size:.78em;opacity:.9;color:#fff;white-space:nowrap"></span>
-<a class="btn btn-secondary" href="index.html" style="text-decoration:none">返回订单看板</a>
-<button class="btn btn-primary" id="btnExportDaily">导出每日统计</button>
-<button class="btn btn-primary" id="btnExportExchange">导出换单清单</button>
-</div>
-</div>
+
+<div class="bg-blob b1"></div>
+<div class="bg-blob b2"></div>
+<div class="bg-blob b3"></div>
+<div class="bg-blob b4"></div>
+<header class="hero">
+  <div>
+    <h1>📦 退货快递统计</h1>
+    <div class="sub">依据卖家备注中的退货快递单号统计（809=8月9日 · 邮政快递包裹=换单，前旧后新）</div>
+  </div>
+  <div class="hero-actions">
+    <span class="pill" id="lastUpdate"></span>
+    <a class="btn btn-ghost" href="index.html">🛍️ 返回订单看板</a>
+    <button class="btn btn-primary" id="btnExportDaily">导出每日统计</button>
+    <button class="btn btn-primary" id="btnExportExchange">导出换单清单</button>
+  </div>
+</header>
 <div class="container">
-<div class="filters">
-<div class="filter-row">
-<div class="filter-group"><label>开始日期</label><input type="date" id="startDate"></div>
-<div class="filter-group"><label>结束日期</label><input type="date" id="endDate"></div>
-<div class="filter-group"><label>店铺分组</label><select id="groupFilter"><option value="">全部分组</option></select></div>
-<div class="filter-group"><label>店铺</label><select id="storeFilter"><option value="">全部</option></select></div>
-<div class="filter-group" style="flex:1"><label>搜索（单号/订单号/备注）</label><input type="text" id="searchInput" placeholder="快递单号或订单号"></div>
-<div class="filter-group"><label>&nbsp;</label><button class="btn btn-primary" id="btnFilter">筛选</button></div>
-<div class="filter-group"><label>&nbsp;</label><button class="btn btn-secondary" id="btnReset">重置</button></div>
-</div>
-</div>
-<div class="cards">
-<div class="card"><div class="value" id="cardTotal">0</div><div class="label">退货快递总件数</div></div>
-<div class="card"><div class="value" id="cardExchange">0</div><div class="label">换单单数</div></div>
-<div class="card"><div class="value" id="cardStores">0</div><div class="label">涉及店铺数</div></div>
-<div class="card"><div class="value" id="cardDays">0</div><div class="label">发货天数</div></div>
-</div>
-<div class="table-section">
-<h3>每日退货快递</h3>
-<div class="table-wrap">
-<table>
-<thead><tr><th>日期</th><th>件数</th><th>快递单号</th><th style="width:70px"></th></tr></thead>
-<tbody id="dailyBody"></tbody>
-</table>
-</div>
-</div>
-<div class="table-section">
-<h3>换单清单（旧单号 → 新单号）</h3>
-<div class="table-wrap">
-<table>
-<thead><tr><th>日期</th><th>店铺</th><th>订单号</th><th>旧单号</th><th>新单号</th><th>卖家备注原文</th></tr></thead>
-<tbody id="exchangeBody"></tbody>
-</table>
-</div>
-</div>
-<div class="table-section" id="unknownSection" style="display:none">
-<h3>未识别备注</h3>
-<div class="table-wrap">
-<table>
-<thead><tr><th>店铺</th><th>订单号</th><th>卖家备注原文</th></tr></thead>
-<tbody id="unknownBody"></tbody>
-</table>
-</div>
-</div>
-</div>
-<script>
+  <div class="stat-grid">
+    <div class="stat-card stat-c-total"><div class="icon">📦</div><div class="value" id="cardTotal">0</div><div class="label">退货快递总件数</div></div>
+    <div class="stat-card stat-c-exchange"><div class="icon">🔄</div><div class="value" id="cardExchange">0</div><div class="label">换单单数</div></div>
+    <div class="stat-card stat-c-stores"><div class="icon">🏬</div><div class="value" id="cardStores">0</div><div class="label">涉及店铺数</div></div>
+    <div class="stat-card stat-c-days"><div class="icon">📅</div><div class="value" id="cardDays">0</div><div class="label">发货天数</div></div>
+  </div>
+
+  <section class="panel" id="filterPanel">
+    <div class="panel-head" onclick="toggleCollapse('filterPanel')">
+      <h2>🔍 筛选统计</h2>
+      <span class="arrow">▼</span>
+    </div>
+    <div class="collapse-body">
+      <div class="filter-row">
+        <div class="filter-group"><label>开始日期</label><input type="date" id="startDate"></div>
+        <div class="filter-group"><label>结束日期</label><input type="date" id="endDate"></div>
+        <div class="filter-group"><label>店铺分组</label><select id="groupFilter"><option value="">全部分组</option></select></div>
+        <div class="filter-group"><label>店铺</label><select id="storeFilter"><option value="">全部</option></select></div>
+        <div class="filter-group" style="flex:2"><label>搜索（单号 / 订单号 / 备注）</label><input type="text" id="searchInput" placeholder="快递单号或订单号"></div>
+        <div class="filter-group"><label>&nbsp;</label><button class="btn btn-primary" id="btnFilter">筛选</button></div>
+        <div class="filter-group"><label>&nbsp;</label><button class="btn btn-secondary" id="btnReset">重置</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel table-section">
+    <div class="panel-title"><h3>📅 每日退货快递</h3></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>日期</th><th>件数</th><th>快递单号</th><th style="width:80px"></th></tr></thead>
+        <tbody id="dailyBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel table-section">
+    <div class="panel-title"><h3>🔄 换单清单（旧单号 → 新单号）</h3></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>日期</th><th>店铺</th><th>订单号</th><th>旧单号</th><th>新单号</th><th>卖家备注原文</th></tr></thead>
+        <tbody id="exchangeBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel table-section" id="unknownSection" style="display:none">
+    <div class="panel-title"><h3>⚠️ 未识别备注</h3></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>店铺</th><th>订单号</th><th>卖家备注原文</th></tr></thead>
+        <tbody id="unknownBody"></tbody>
+      </table>
+    </div>
+  </section>
+</div><script>
 function pad(n){return n<10?'0'+n:''+n;}
 function getStoreGroup(sn){
 if(!sn)return '';
@@ -201,6 +257,7 @@ out.push({r:r,key:key});
 });
 return out;
 }
+function toggleCollapse(id){document.getElementById(id).classList.toggle('collapsed');}
 function render(){
 var f=currentFilters();
 var rows=parsed.filter(function(r){return orderMatch(r.order,f);});
@@ -218,33 +275,37 @@ document.getElementById('cardExchange').textContent=exchange.length;
 document.getElementById('cardStores').textContent=Object.keys(stores).length;
 document.getElementById('cardDays').textContent=keys.length;
 var tb=document.getElementById('dailyBody');tb.innerHTML='';
+if(!keys.length){tb.innerHTML='<tr><td colspan=4><div class=empty-tip>暂无数据，调整筛选条件试试</div></td></tr>';}
+else{
 keys.forEach(function(k){
 var d=daily[k];
 var tr=document.createElement('tr');
-var td1=document.createElement('td');td1.textContent=k;
-var td2=document.createElement('td');td2.textContent=d.count;
-var td3=document.createElement('td');
+var td1=document.createElement('td');td1.textContent=k;td1.style.fontWeight='700';
+var td2=document.createElement('td');td2.textContent=d.count;td2.style.fontWeight='800';td2.style.color='#e08a2e';
+var td3=document.createElement('td');td3.style.whiteSpace='normal';
 d.items.forEach(function(it,i){
-if(i>0)td3.appendChild(document.createTextNode('  '));
 var sp=document.createElement('span');sp.className='tracking';sp.textContent=it.tracking;
 td3.appendChild(sp);
 });
 var td4=document.createElement('td');
-var btn=document.createElement('button');btn.className='btn-mini';btn.textContent='展开';
+var btn=document.createElement('button');btn.className='btn-mini';btn.textContent='展开明细';
 var detailTr=document.createElement('tr');detailTr.style.display='none';detailTr.className='detail-row';
 var dt=document.createElement('td');dt.colSpan=4;
 d.items.forEach(function(it){
-var line=document.createElement('div');line.style.margin='3px 0';
+var line=document.createElement('div');line.style.margin='4px 0';
 line.textContent='店铺：'+it.order.storeName+'｜订单号：'+it.order.platformOrderId+'｜单号：'+it.tracking+'｜备注：'+it.note;
 dt.appendChild(line);
 });
 detailTr.appendChild(dt);
-btn.onclick=function(){detailTr.style.display=detailTr.style.display==='none'?'':'none';};
+btn.onclick=function(){detailTr.style.display=detailTr.style.display==='none'?'':'none';btn.textContent=detailTr.style.display==='none'?'展开明细':'收起';};
 td4.appendChild(btn);
 tr.appendChild(td1);tr.appendChild(td2);tr.appendChild(td3);tr.appendChild(td4);
 tb.appendChild(tr);tb.appendChild(detailTr);
 });
+}
 var eb=document.getElementById('exchangeBody');eb.innerHTML='';
+if(!exchange.length){eb.innerHTML='<tr><td colspan=6><div class=empty-tip>暂无换单记录</div></td></tr>';}
+else{
 exchange.forEach(function(x){
 var r=x.r;
 var tr=document.createElement('tr');
@@ -257,6 +318,7 @@ var td6=document.createElement('td');td6.className='note-full';td6.textContent=r
 tr.appendChild(td1);tr.appendChild(td2);tr.appendChild(td3);tr.appendChild(td4);tr.appendChild(td5);tr.appendChild(td6);
 eb.appendChild(tr);
 });
+}
 var us=document.getElementById('unknownSection');
 var ub=document.getElementById('unknownBody');ub.innerHTML='';
 if(unk.length){
@@ -271,7 +333,7 @@ ub.appendChild(tr);
 });
 }else{us.style.display='none';}
 }
-function csvCell(v){return '"'+String(v).replace(/"/g,'""')+'"';}
+function csvCell(v){return '"'+String(v).replace(/"/g,'""')+'"'}
 function exportCSV(filename,rows){
 var csv=rows.map(function(r){return r.map(csvCell).join(',');}).join('\r\n');
 var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
@@ -329,12 +391,13 @@ render();
 };
 document.getElementById('groupFilter').onchange=function(){initStores(this.value);render();};
 document.getElementById('storeFilter').onchange=render;
+document.getElementById('searchInput').onkeydown=function(e){if(e.key==='Enter')render();};
 document.getElementById('btnExportDaily').onclick=exportDaily;
 document.getElementById('btnExportExchange').onclick=exportExchange;
 initGroups();
 render();
 var lastUpdateEl=document.getElementById("lastUpdate");
-function showLastUpdate(){if(window.LAST_UPDATE&&lastUpdateEl)lastUpdateEl.textContent="更新于 "+window.LAST_UPDATE;}
+function showLastUpdate(){if(window.LAST_UPDATE&&lastUpdateEl)lastUpdateEl.textContent="🔄 更新于 "+window.LAST_UPDATE;}
 showLastUpdate();
 function bgRefresh(){
 if(document.activeElement&&(document.activeElement.tagName==="INPUT"||document.activeElement.tagName==="SELECT"))return;
