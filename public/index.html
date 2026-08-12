@@ -61,12 +61,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .btn-secondary{background:#f2eae0;color:#6b5a4a}
 .btn-secondary:hover{background:#ecdfd0}
 .btn-ghost{background:transparent;color:#8a7a6a;border:1.5px solid #e5d8c8}
-.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.toolbar .selected-info{font-size:.85em;color:var(--ink2);font-weight:600}
-.toolbar .sep{width:1px;height:24px;background:#eee2d4;margin:0 4px}
-.flag-btn{width:30px;height:30px;border-radius:50%;border:3px solid #fff;cursor:pointer;transition:all .18s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
-.flag-btn:hover{transform:scale(1.18)}
-.flag-btn.active{border-color:#5b4636;box-shadow:0 0 0 3px #fff,0 0 0 5px rgba(91,70,54,.5)}
+
+
+
+
+
+
 .charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 .chart-box{background:rgba(255,255,255,.93);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
 .chart-box h3{font-size:.92em;font-weight:800;color:#6b5a4a;margin-bottom:12px}
@@ -79,7 +79,7 @@ th.sorted{color:#e08a2e}
 td{padding:9px 10px;border-bottom:1px solid #f6f0e8;vertical-align:top}
 tbody tr{cursor:pointer;transition:background .15s}
 tbody tr:hover{background:#fff7ec}
-tbody tr.selected{background:#ffe9cf}
+
 .status-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.8em;font-weight:800;white-space:nowrap}
 .status-shipped{background:#d9f7e3;color:#1f8a4c}
 .status-refunded{background:#ffe8d0;color:#d97b1f}
@@ -102,7 +102,7 @@ tbody tr.selected{background:#ffe9cf}
 .note-text.empty{color:#b3a694;font-style:italic}
 .flag-dot{display:inline-block;width:13px;height:13px;border-radius:50%;cursor:pointer;border:2px solid rgba(0,0,0,.12);transition:transform .15s;flex-shrink:0}
 .flag-dot:hover{transform:scale(1.35)}
-.chk{width:16px;height:16px;accent-color:#f08c2e;cursor:pointer}
+
 .empty-tip{text-align:center;padding:36px;color:var(--ink3);font-size:.9em}
 .flag-picker{position:absolute;background:#fff;border:1px solid #f0e3d3;border-radius:14px;padding:8px;box-shadow:var(--shadow-lg);z-index:9999;display:none}
 .flag-picker.show{display:flex;gap:6px}
@@ -155,8 +155,8 @@ tbody tr.selected{background:#ffe9cf}
   .chart-wrap{height:220px}
   .stat-card{padding:14px}
   .stat-card .value{font-size:1.3em}
-  .toolbar{gap:8px}
-  .toolbar .sep{display:none}
+  
+  
   table{font-size:.74em}
   th,td{padding:7px 5px}
   .note-cell{min-width:150px;max-width:180px}
@@ -181,7 +181,7 @@ tbody tr.selected{background:#ffe9cf}
 <header class="hero">
   <div>
     <h1>🛍️ 抖音订单看板</h1>
-    <div class="sub">勾选订单批量设旗 · 点击行看详情 · 备注修改后点「同步到 ERP」实时写回风速分销</div>
+    <div class="sub">点击行看详情 · 点旗帜圆点换色 · 备注修改后点「同步到 ERP」实时写回风速分销</div>
   </div>
   <div class="hero-actions">
     <span class="pill" id="lastUpdate"></span>
@@ -229,24 +229,7 @@ tbody tr.selected{background:#ffe9cf}
     </div>
   </section>
 
-  <section class="panel">
-    <div class="toolbar">
-      <span class="selected-info">已选 <strong id="selCount" style="color:#e08a2e">0</strong> 条</span>
-      <span class="sep"></span>
-      <span style="font-size:.8em;color:var(--ink2);font-weight:700">批量设旗:</span>
-      <button class="flag-btn" data-flag="0" title="无" style="background:#aaa"></button>
-      <button class="flag-btn" data-flag="1" title="红" style="background:#f44336"></button>
-      <button class="flag-btn" data-flag="2" title="橙" style="background:#ff9800"></button>
-      <button class="flag-btn" data-flag="3" title="黄" style="background:#ffc107"></button>
-      <button class="flag-btn" data-flag="4" title="绿" style="background:#00fd28"></button>
-      <button class="flag-btn" data-flag="5" title="紫" style="background:#e000fc"></button>
-      <span class="sep"></span>
-      <span style="font-size:.8em;color:var(--ink2);font-weight:700">应用到:</span>
-      <button class="btn btn-secondary" id="btnSetSeller">卖家备注</button>
-      <button class="btn btn-secondary" id="btnSetSystem">系统备注</button>
-    </div>
-  </section>
-
+  
   <div class="charts">
     <div class="chart-box"><h3>订单状态分布</h3><div class="chart-wrap"><canvas id="statusPie"></canvas></div></div>
     <div class="chart-box"><h3>每日订单趋势</h3><div class="chart-wrap"><canvas id="trendLine"></canvas></div></div>
@@ -256,7 +239,6 @@ tbody tr.selected{background:#ffe9cf}
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th style="width:34px"><input type="checkbox" class="chk" id="chkAll" onclick="event.preventDefault();toggleSelectAll();"></th>
           <th id="th0">日期</th><th id="th1">店铺</th><th id="th2">订单号</th><th>商品</th><th id="th3">状态</th><th id="th4">金额</th>
           <th>备注（买 / 卖 / 系）</th>
         </tr></thead>
@@ -295,7 +277,7 @@ tbody tr.selected{background:#ffe9cf}
 var FLAG_COLORS=["#aaa","#f44336","#ff9800","#ffc107","#00fd28","#e000fc"];
 var FLAG_NAMES=["无","红","橙","黄","绿","紫"];
 var filteredData=[],changes={},sortCol=0,sortAsc=false,charts={};
-var selectedIds=new Set(),currentFlag=0,currentDetailId=null;
+var currentDetailId=null;
 
 function getStoreGroup(storeName){
 if(!storeName)return "";
@@ -377,7 +359,6 @@ document.getElementById("storeFilter").innerHTML="<option value=''>全部</optio
 initStores("");
 document.querySelectorAll(".qd").forEach(function(b){b.classList.remove("active");});
 filteredData=[...RAW_DATA];
-selectedIds.clear();
 sortAndRender();
 }
 function sortAndRender(){
@@ -420,45 +401,6 @@ filteredData.forEach(function(o){var d=fmtDate(o.shipTime);if(!d||d==="-")return
 var dt=Object.keys(dm).sort();
 if(charts.trend)charts.trend.destroy();
 charts.trend=new Chart(document.getElementById("trendLine"),{type:"line",data:{labels:dt,datasets:[{label:"订单数",data:dt.map(function(k){return dm[k].c;}),borderColor:"#f08c2e",backgroundColor:"rgba(240,140,46,.12)",fill:true,tension:.35,pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{maxTicksLimit:12,font:{size:10}}},y:{ticks:{precision:0,font:{size:10}}}}}});
-}
-
-function toggleSelect(id){
-if(selectedIds.has(id)){selectedIds.delete(id);}else{selectedIds.add(id);}
-updateSelCount();renderTable();
-}
-function toggleSelectAll(){
-var allSelected=filteredData.length>0&&filteredData.every(function(o){return selectedIds.has(o.platformOrderId);});
-if(allSelected){selectedIds.clear();}
-else{filteredData.forEach(function(o){selectedIds.add(o.platformOrderId);});}
-updateSelCount();renderTable();
-}
-function updateSelCount(){document.getElementById("selCount").textContent=selectedIds.size;}
-
-function setFlagColor(f){
-currentFlag=f;
-document.querySelectorAll(".flag-btn").forEach(function(b){b.classList.toggle("active",parseInt(b.dataset.flag)===f);});
-}
-function applyFlag(type){
-if(!selectedIds.size)return showStatus("请先选择订单","info");
-var count=0;
-selectedIds.forEach(function(id){
-var orig=RAW_DATA.find(function(o){return o.platformOrderId===id;});
-var ov=orig?orig[type+"Flag"]:0;
-if(currentFlag!==ov){
-if(!changes[id])changes[id]={};
-changes[id][type+"Flag"]=currentFlag;
-count++;
-}else if(changes[id]&&changes[id][type+"Flag"]!==undefined){
-delete changes[id][type+"Flag"];
-if(!Object.keys(changes[id]).length)delete changes[id];
-}
-});
-renderTable();updateChangeCount();
-if(currentDetailId){
-var o=RAW_DATA.find(function(x){return x.platformOrderId===currentDetailId;});
-if(o)renderDrawer(o);
-}
-showStatus("已设置 "+count+" 条"+(type==="seller"?"卖家":"系统")+"备注旗帜","success");
 }
 
 function cycleFlag(oid,type){
@@ -531,20 +473,18 @@ return h;
 }
 function renderTable(){
 var tb=document.getElementById("tableBody");
-if(!filteredData.length){tb.innerHTML="<tr><td colspan=8><div class=empty-tip>暂无数据，调整筛选条件试试</div></td></tr>";return;}
+if(!filteredData.length){tb.innerHTML="<tr><td colspan=7><div class=empty-tip>暂无数据，调整筛选条件试试</div></td></tr>";return;}
 var rows=filteredData;
 var h="";
 for(var i=0;i<rows.length;i++){
 var o=rows[i];
 var ch=changes[o.platformOrderId];
-var sel=selectedIds.has(o.platformOrderId)?"selected":"";
 var sf=(ch&&ch.sellerFlag!==undefined)?ch.sellerFlag:o.sellerFlag;
 var syf=(ch&&ch.systemFlag!==undefined)?ch.systemFlag:o.systemFlag;
 var bText=(ch&&ch.buyerNote!==undefined)?ch.buyerNote:(o.buyerNote||"");
 var sText=(ch&&ch.sellerNote!==undefined)?ch.sellerNote:(o.sellerNote||"");
 var yText=(ch&&ch.systemNote!==undefined)?ch.systemNote:(o.systemNote||"");
-h+="<tr data-id='"+o.platformOrderId+"' class='"+sel+"' onclick='openDetail(this.dataset.id)'>";
-h+="<td style='cursor:default' onclick='event.stopPropagation()'><input type='checkbox' class='chk' "+(sel?"checked":"")+" value='"+o.platformOrderId+"' onclick='event.preventDefault();event.stopPropagation();toggleSelect(this.value);'></td>";
+h+="<tr data-id='"+o.platformOrderId+"' onclick='openDetail(this.dataset.id)'>";
 h+="<td style='white-space:nowrap'>"+fmtDate(o.shipTime)+"</td>";
 h+="<td style='max-width:150px'>"+esc(o.storeName||"")+"</td>";
 h+="<td style='font-size:.8em;color:#7a6a5a;word-break:break-all;min-width:120px'>"+esc(o.platformOrderId||"")+"</td>";
@@ -559,8 +499,6 @@ h+="</td>";
 h+="</tr>";
 }
 tb.innerHTML=h;
-var allSelected=rows.length>0&&rows.every(function(o){return selectedIds.has(o.platformOrderId);});
-document.getElementById("chkAll").checked=allSelected;
 }
 
 function openDetail(oid){
@@ -685,9 +623,6 @@ function showStatus(m,t){var e=document.getElementById("syncStatus");e.textConte
 document.getElementById("btnFilter").onclick=applyFilters;
 document.getElementById("btnReset").onclick=resetFilters;
 document.getElementById("syncBtn").onclick=syncToERP;
-document.getElementById("btnSetSeller").onclick=function(){applyFlag("seller");};
-document.getElementById("btnSetSystem").onclick=function(){applyFlag("system");};
-document.querySelectorAll(".flag-btn").forEach(function(b){b.onclick=function(){setFlagColor(parseInt(b.dataset.flag));};});
 document.addEventListener("click",function(e){
 var t=e.target;
 if(t&&t.classList&&t.classList.contains("fp-color")){selectFlagColor(parseInt(t.dataset.f));}
@@ -707,7 +642,6 @@ document.addEventListener("keydown",function(e){if(e.key==="Escape"&&currentDeta
 filteredData=[...RAW_DATA];
 initGroups();
 initStores("");
-setFlagColor(0);
 sortAndRender();
 var lastUpdateEl=document.getElementById("lastUpdate");
 function showLastUpdate(){if(window.LAST_UPDATE&&lastUpdateEl){lastUpdateEl.textContent="🔄 更新于 "+window.LAST_UPDATE;}}
